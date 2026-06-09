@@ -8,66 +8,45 @@
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;background:#000;}
 body{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-height:100vh;}
-.app-wrap{
-  position:relative;
-  width:100%;
-  max-width:480px;
-  aspect-ratio:848/1400;
-}
-.bg-img{
-  position:absolute;top:0;left:0;
-  width:100%;height:100%;
-  object-fit:fill;display:block;
-}
+.app-wrap{position:relative;width:100%;max-width:480px;aspect-ratio:848/1400;}
+.bg-img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:fill;display:block;}
 .dyn{position:absolute;}
-
-/* BPM 숫자: left=253,top=563, w=313,h=149 → % */
 #bpmNum{
-  left:29.8%;top:40.2%;
-  width:36.9%;height:10.6%;
-  font-family:'Arial Black',Arial,sans-serif;
-  font-size:clamp(28px,10vw,80px);
-  font-weight:900;color:white;
-  display:flex;align-items:center;justify-content:center;
-  letter-spacing:-2px;
+  left:29.8%;top:40.2%;width:36.9%;height:10.6%;
+  font-family:"Arial Black",Arial,sans-serif;
+  font-size:clamp(28px,10vw,80px);font-weight:900;color:white;
+  display:flex;align-items:center;justify-content:center;letter-spacing:-2px;
 }
-/* GO/STOP: left=687,top=90,w=129,h=43 */
 #startBtn{
-  left:81.0%;top:6.4%;
-  width:15.2%;height:3.1%;
+  left:78%;top:4%;width:20%;height:11%;
   background:transparent;border:none;
-  font-family:'Arial Black',Arial,sans-serif;
-  font-size:clamp(14px,3.5vw,24px);font-weight:900;
-  color:white;cursor:pointer;
-  -webkit-tap-highlight-color:transparent;
-  display:flex;align-items:center;justify-content:center;
-  letter-spacing:2px;
+  font-family:"Arial Black",Arial,sans-serif;
+  font-size:clamp(22px,5.5vw,38px);font-weight:900;color:white;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+  display:flex;align-items:center;justify-content:center;letter-spacing:2px;
 }
-/* 걸음수 숫자: left=377,top=1008,w=64,h=90 */
-/* 원안 색상: 갈색/로즈 */
 #stepsVal{
-  left:35%;top:72.0%;
-  width:28%;height:6.4%;
-  font-family:'Arial Black',Arial,sans-serif;
-  font-size:clamp(22px,7vw,56px);font-weight:900;
-  color:#a06060;
+  left:35%;top:72.0%;width:28%;height:6.4%;
+  font-family:"Arial Black",Arial,sans-serif;
+  font-size:clamp(22px,7vw,56px);font-weight:900;color:#a06060;
   display:flex;align-items:center;justify-content:center;
 }
-/* 곡명 핑크 */
-#np0{
-  left:21.6%;top:83.5%;width:58.4%;height:3.2%;
-  font-family:'Arial Black',Arial,sans-serif;
-  font-size:clamp(12px,3.8vw,24px);font-weight:900;
-  color:#ff55aa;letter-spacing:2px;
-  display:flex;align-items:center;justify-content:center;
-  text-transform:lowercase;white-space:nowrap;overflow:hidden;
+#stabilizeBar{
+  left:25%;top:57%;width:50%;height:1.2%;
+  background:rgba(255,255,255,0.15);border-radius:4px;overflow:hidden;
 }
-#np1{left:21.6%;top:86.7%;width:58.4%;height:3.2%;font-family:'Arial Black',Arial,sans-serif;font-size:clamp(11px,3.3vw,20px);font-weight:700;color:rgba(255,255,255,0.28);letter-spacing:2px;display:flex;align-items:center;justify-content:center;text-transform:lowercase;white-space:nowrap;overflow:hidden;}
-#np2{left:21.6%;top:89.9%;width:58.4%;height:3.2%;font-family:'Arial Black',Arial,sans-serif;font-size:clamp(11px,3.3vw,20px);font-weight:700;color:rgba(255,255,255,0.28);letter-spacing:2px;display:flex;align-items:center;justify-content:center;text-transform:lowercase;white-space:nowrap;overflow:hidden;}
-#np3{left:21.6%;top:93.1%;width:58.4%;height:3.2%;font-family:'Arial Black',Arial,sans-serif;font-size:clamp(11px,3.3vw,20px);font-weight:700;color:rgba(255,255,255,0.28);letter-spacing:2px;display:flex;align-items:center;justify-content:center;text-transform:lowercase;white-space:nowrap;overflow:hidden;}
-#np4{left:21.6%;top:95.8%;width:58.4%;height:3.2%;font-family:'Arial Black',Arial,sans-serif;font-size:clamp(11px,3.3vw,20px);font-weight:700;color:rgba(255,255,255,0.28);letter-spacing:2px;display:flex;align-items:center;justify-content:center;text-transform:lowercase;white-space:nowrap;overflow:hidden;}
-
-/* 이전/다음 터치 영역 */
+#stabilizeFill{height:100%;width:0%;background:#ffdd44;transition:width 0.3s ease;border-radius:4px;}
+#stabilizeLabel{
+  left:15%;top:58.5%;width:70%;height:2.5%;
+  font-family:Arial,sans-serif;font-size:clamp(9px,2.2vw,13px);
+  color:rgba(255,255,255,0.7);
+  display:flex;align-items:center;justify-content:center;
+}
+#np0{left:21.6%;top:83.5%;width:58.4%;height:3.2%;font-family:"Arial Black",Arial,sans-serif;font-size:clamp(12px,3.8vw,24px);font-weight:900;color:#ff55aa;letter-spacing:2px;display:flex;align-items:center;justify-content:center;text-transform:lowercase;white-space:nowrap;overflow:hidden;}
+#np1{left:21.6%;top:86.7%;width:58.4%;height:3.2%;font-family:"Arial Black",Arial,sans-serif;font-size:clamp(11px,3.3vw,20px);font-weight:700;color:rgba(255,255,255,0.28);letter-spacing:2px;display:flex;align-items:center;justify-content:center;text-transform:lowercase;white-space:nowrap;overflow:hidden;}
+#np2{left:21.6%;top:89.9%;width:58.4%;height:3.2%;font-family:"Arial Black",Arial,sans-serif;font-size:clamp(11px,3.3vw,20px);font-weight:700;color:rgba(255,255,255,0.28);letter-spacing:2px;display:flex;align-items:center;justify-content:center;text-transform:lowercase;white-space:nowrap;overflow:hidden;}
+#np3{left:21.6%;top:93.1%;width:58.4%;height:3.2%;font-family:"Arial Black",Arial,sans-serif;font-size:clamp(11px,3.3vw,20px);font-weight:700;color:rgba(255,255,255,0.28);letter-spacing:2px;display:flex;align-items:center;justify-content:center;text-transform:lowercase;white-space:nowrap;overflow:hidden;}
+#np4{left:21.6%;top:95.8%;width:58.4%;height:3.2%;font-family:"Arial Black",Arial,sans-serif;font-size:clamp(11px,3.3vw,20px);font-weight:700;color:rgba(255,255,255,0.28);letter-spacing:2px;display:flex;align-items:center;justify-content:center;text-transform:lowercase;white-space:nowrap;overflow:hidden;}
 #prevBtn{left:0%;top:41%;width:18%;height:25%;background:transparent;border:none;cursor:pointer;-webkit-tap-highlight-color:transparent;}
 #nextBtn{left:82%;top:41%;width:18%;height:25%;background:transparent;border:none;cursor:pointer;-webkit-tap-highlight-color:transparent;}
 </style>
@@ -78,6 +57,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:flex-
   <div class="dyn" id="bpmNum">--</div>
   <button class="dyn" id="startBtn" onclick="toggleSensor()">GO</button>
   <div class="dyn" id="stepsVal">0</div>
+  <div class="dyn" id="stabilizeBar"><div id="stabilizeFill"></div></div>
+  <div class="dyn" id="stabilizeLabel"></div>
   <div class="dyn" id="np0">-- -- --</div>
   <div class="dyn" id="np1">-- -- --</div>
   <div class="dyn" id="np2">-- -- --</div>
@@ -86,112 +67,189 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:flex-
   <button class="dyn" id="prevBtn" onclick="prevTrack()"></button>
   <button class="dyn" id="nextBtn" onclick="nextTrack()"></button>
 </div>
-
 <script>
-const DEMO_TRACKS={
-  150:['easy pace 150-1','easy pace 150-2','easy pace 150-3','easy pace 150-4','easy pace 150-5'],
-  152:['steady flow 152-1','steady flow 152-2','steady flow 152-3','steady flow 152-4','steady flow 152-5'],
-  154:['groove 154-1','groove 154-2','groove 154-3','groove 154-4','groove 154-5'],
-  156:['rhythm 156-1','rhythm 156-2','rhythm 156-3','rhythm 156-4','rhythm 156-5'],
-  158:['beat 158-1','beat 158-2','beat 158-3','beat 158-4','beat 158-5'],
-  160:['energy 160-1','energy 160-2','energy 160-3','energy 160-4','energy 160-5'],
-  162:['power 162-1','power 162-2','power 162-3','power 162-4','power 162-5'],
-  164:['drive 164-1','drive 164-2','drive 164-3','drive 164-4','drive 164-5'],
-  166:['speed 166-1','speed 166-2','speed 166-3','speed 166-4','speed 166-5'],
-  168:['rush 168-1','rush 168-2','rush 168-3','rush 168-4','rush 168-5'],
-  170:['peak 170-1','peak 170-2','peak 170-3','peak 170-4','peak 170-5'],
-  172:['force 172-1','force 172-2','force 172-3','force 172-4','force 172-5'],
-  174:['sprint 174-1','sprint 174-2','sprint 174-3','sprint 174-4','sprint 174-5'],
-  176:['blast 176-1','blast 176-2','blast 176-3','blast 176-4','blast 176-5'],
-  178:['ultra 178-1','ultra 178-2','ultra 178-3','ultra 178-4','ultra 178-5'],
-  180:['elite 180-1','elite 180-2','elite 180-3','elite 180-4','elite 180-5'],
+var DEMO_TRACKS = {
+  150:["easy pace 150-1","easy pace 150-2","easy pace 150-3","easy pace 150-4","easy pace 150-5"],
+  152:["steady flow 152-1","steady flow 152-2","steady flow 152-3","steady flow 152-4","steady flow 152-5"],
+  154:["groove 154-1","groove 154-2","groove 154-3","groove 154-4","groove 154-5"],
+  156:["rhythm 156-1","rhythm 156-2","rhythm 156-3","rhythm 156-4","rhythm 156-5"],
+  158:["beat 158-1","beat 158-2","beat 158-3","beat 158-4","beat 158-5"],
+  160:["energy 160-1","energy 160-2","energy 160-3","energy 160-4","energy 160-5"],
+  162:["power 162-1","power 162-2","power 162-3","power 162-4","power 162-5"],
+  164:["drive 164-1","drive 164-2","drive 164-3","drive 164-4","drive 164-5"],
+  166:["speed 166-1","speed 166-2","speed 166-3","speed 166-4","speed 166-5"],
+  168:["rush 168-1","rush 168-2","rush 168-3","rush 168-4","rush 168-5"],
+  170:["peak 170-1","peak 170-2","peak 170-3","peak 170-4","peak 170-5"],
+  172:["force 172-1","force 172-2","force 172-3","force 172-4","force 172-5"],
+  174:["sprint 174-1","sprint 174-2","sprint 174-3","sprint 174-4","sprint 174-5"],
+  176:["blast 176-1","blast 176-2","blast 176-3","blast 176-4","blast 176-5"],
+  178:["ultra 178-1","ultra 178-2","ultra 178-3","ultra 178-4","ultra 178-5"],
+  180:["elite 180-1","elite 180-2","elite 180-3","elite 180-4","elite 180-5"]
 };
-const BPM_LIST=[150,152,154,156,158,160,162,164,166,168,170,172,174,176,178,180];
-const DRIVE_FILES={};
-function getNearestBpm(b){return BPM_LIST.reduce((a,c)=>Math.abs(c-b)<Math.abs(a-b)?c:a);}
+var BPM_LIST = [150,152,154,156,158,160,162,164,166,168,170,172,174,176,178,180];
+var DRIVE_FILES = {};
 
-let currentBpm=0,sensorActive=false,stepCount=0,lastStepTime=0;
-let motionHandler=null,demoTimer=null,currentTrackIdx=0,currentNearest=0,currentAudio=null;
+var STABLE_SECONDS = 7;
+var STABLE_TOLERANCE = 2;
+var CHANGE_THRESHOLD = 5;
+var AVG_WINDOW = 12;
 
-function updateBpm(bpm){
-  currentBpm=bpm;
-  document.getElementById('bpmNum').textContent=bpm;
-  const nearest=getNearestBpm(bpm);
-  if(nearest!==currentNearest){currentNearest=nearest;currentTrackIdx=0;renderTracks();}
+function getNearestBpm(b) {
+  return BPM_LIST.reduce(function(a,c){ return Math.abs(c-b)<Math.abs(a-b)?c:a; });
 }
 
-function renderTracks(){
-  const tracks=DEMO_TRACKS[currentNearest]||[];
-  const len=tracks.length;
-  for(let i=0;i<5;i++) document.getElementById('np'+i).textContent=tracks[(currentTrackIdx+i)%len]||'';
-  if(DRIVE_FILES[currentNearest]&&DRIVE_FILES[currentNearest][currentTrackIdx%len])
-    playDrive(DRIVE_FILES[currentNearest][currentTrackIdx%len]);
+var sensorActive=false, stepCount=0, lastStepTime=0;
+var motionHandler=null, demoTimer=null;
+var currentTrackIdx=0, currentAudio=null;
+var bpmSamples=[], currentAvgBpm=0, lockedBpm=0;
+var stableStartTime=0, isPlaying=false;
+
+function addBpmSample(bpm) {
+  bpmSamples.push(bpm);
+  if(bpmSamples.length > AVG_WINDOW) bpmSamples.shift();
+  var sum=0;
+  for(var i=0;i<bpmSamples.length;i++) sum+=bpmSamples[i];
+  var avg = Math.round(sum/bpmSamples.length);
+  currentAvgBpm = avg;
+  document.getElementById("bpmNum").textContent = avg;
+
+  if(isPlaying) {
+    if(Math.abs(avg - lockedBpm) > CHANGE_THRESHOLD && bpmSamples.length >= 6) {
+      isPlaying=false; lockedBpm=0; bpmSamples=[];
+      if(currentAudio){currentAudio.pause();currentAudio=null;}
+      clearNp();
+      stableStartTime=0;
+    }
+  } else {
+    checkStability(avg);
+  }
 }
 
-function playDrive(id){
+function checkStability(avg) {
+  if(bpmSamples.length < 4) {
+    document.getElementById("stabilizeLabel").textContent = "케이던스 측정 중...";
+    document.getElementById("stabilizeFill").style.width = "0%";
+    return;
+  }
+  var nearest = getNearestBpm(avg);
+  var recent = bpmSamples.slice(-6);
+  var stable = true;
+  for(var i=0;i<recent.length;i++) {
+    if(Math.abs(recent[i]-avg) > STABLE_TOLERANCE) { stable=false; break; }
+  }
+  if(stable) {
+    if(stableStartTime===0) stableStartTime=Date.now();
+    var elapsed = (Date.now()-stableStartTime)/1000;
+    var pct = Math.min(elapsed/STABLE_SECONDS*100, 100);
+    document.getElementById("stabilizeFill").style.width = pct+"%";
+    var remaining = Math.ceil(STABLE_SECONDS-elapsed);
+    document.getElementById("stabilizeLabel").textContent = remaining>0 ? ("안정화 중... "+remaining+"초") : "";
+    if(elapsed >= STABLE_SECONDS) {
+      lockAndPlay(nearest);
+    }
+  } else {
+    stableStartTime=0;
+    document.getElementById("stabilizeFill").style.width = "0%";
+    document.getElementById("stabilizeLabel").textContent = "케이던스 측정 중...";
+  }
+}
+
+function lockAndPlay(nearest) {
+  lockedBpm=nearest; isPlaying=true; stableStartTime=0;
+  document.getElementById("stabilizeFill").style.width = "0%";
+  document.getElementById("stabilizeLabel").textContent = "";
+  renderTracks(nearest);
+}
+
+function renderTracks(nearest) {
+  var tracks = DEMO_TRACKS[nearest] || [];
+  var len = tracks.length;
+  for(var i=0;i<5;i++) {
+    document.getElementById("np"+i).textContent = tracks[(currentTrackIdx+i)%len]||"";
+  }
+  if(DRIVE_FILES[nearest] && DRIVE_FILES[nearest][currentTrackIdx%len]) {
+    playDrive(DRIVE_FILES[nearest][currentTrackIdx%len]);
+  }
+}
+
+function clearNp() {
+  for(var i=0;i<5;i++) document.getElementById("np"+i).textContent = "-- -- --";
+}
+
+function playDrive(id) {
   if(currentAudio){currentAudio.pause();currentAudio=null;}
-  currentAudio=new Audio('https://drive.google.com/uc?export=download&id='+id);
-  currentAudio.play().catch(()=>{});
-  currentAudio.onended=()=>{currentTrackIdx++;renderTracks();};
+  currentAudio = new Audio("https://drive.google.com/uc?export=download&id="+id);
+  currentAudio.play().catch(function(){});
+  currentAudio.onended = function(){ currentTrackIdx++; renderTracks(lockedBpm); };
 }
 
-function prevTrack(){if(currentTrackIdx>0){currentTrackIdx--;if(currentNearest)renderTracks();}}
-function nextTrack(){currentTrackIdx++;if(currentNearest)renderTracks();}
+function prevTrack(){if(currentTrackIdx>0){currentTrackIdx--;if(lockedBpm)renderTracks(lockedBpm);}}
+function nextTrack(){currentTrackIdx++;if(lockedBpm)renderTracks(lockedBpm);}
 function toggleSensor(){if(!sensorActive)startSensor();else stopSensor();}
 
 function startSensor(){
-  if(typeof DeviceMotionEvent!=='undefined'&&typeof DeviceMotionEvent.requestPermission==='function'){
-    DeviceMotionEvent.requestPermission().then(s=>{if(s==='granted')activateMotion();else startDemo();}).catch(()=>startDemo());
-  }else if(window.DeviceMotionEvent){activateMotion();}else{startDemo();}
+  if(typeof DeviceMotionEvent!=="undefined" && typeof DeviceMotionEvent.requestPermission==="function"){
+    DeviceMotionEvent.requestPermission().then(function(s){
+      if(s==="granted") activateMotion(); else startDemo();
+    }).catch(function(){startDemo();});
+  } else if(window.DeviceMotionEvent){
+    activateMotion();
+  } else {
+    startDemo();
+  }
 }
 
 function activateMotion(){
-  sensorActive=true;setBtn(true);
-  let lastMag=0,stepTimes=[];
-  motionHandler=(e)=>{
-    const a=e.accelerationIncludingGravity;if(!a)return;
-    const mag=Math.sqrt(a.x**2+a.y**2+a.z**2),now=Date.now();
-    if(mag>13&&lastMag<=13&&(now-lastStepTime)>220){
-      lastStepTime=now;stepTimes.push(now);stepCount++;
-      document.getElementById('stepsVal').textContent=stepCount;
-      if(stepTimes.length>8)stepTimes.shift();
+  sensorActive=true; setBtn(true);
+  var lastMag=0, stepTimes=[];
+  motionHandler = function(e){
+    var a=e.accelerationIncludingGravity; if(!a)return;
+    var mag=Math.sqrt(a.x*a.x+a.y*a.y+a.z*a.z), now=Date.now();
+    if(mag>13 && lastMag<=13 && (now-lastStepTime)>220){
+      lastStepTime=now; stepTimes.push(now); stepCount++;
+      document.getElementById("stepsVal").textContent=stepCount;
+      if(stepTimes.length>8) stepTimes.shift();
       if(stepTimes.length>=4){
-        const ivs=[];for(let i=1;i<stepTimes.length;i++)ivs.push(stepTimes[i]-stepTimes[i-1]);
-        const bpm=Math.round(60000/(ivs.reduce((a,b)=>a+b,0)/ivs.length));
-        if(bpm>100&&bpm<230)updateBpm(bpm);
+        var ivs=[];
+        for(var i=1;i<stepTimes.length;i++) ivs.push(stepTimes[i]-stepTimes[i-1]);
+        var sum=0; for(var j=0;j<ivs.length;j++) sum+=ivs[j];
+        var bpm=Math.round(60000/(sum/ivs.length));
+        if(bpm>100&&bpm<230) addBpmSample(bpm);
       }
     }
     lastMag=mag;
   };
-  window.addEventListener('devicemotion',motionHandler);
+  window.addEventListener("devicemotion", motionHandler);
 }
 
 function startDemo(){
-  sensorActive=true;setBtn(true);
-  let d=162;
-  demoTimer=setInterval(()=>{
-    d=Math.max(150,Math.min(180,d+(Math.random()>0.5?1:-1)));
-    stepCount++;document.getElementById('stepsVal').textContent=stepCount;
-    updateBpm(Math.round(d));
-  },420);
+  sensorActive=true; setBtn(true);
+  var d=162;
+  demoTimer=setInterval(function(){
+    d=Math.max(150,Math.min(180,d+(Math.random()>0.5?0.5:-0.5)));
+    stepCount++; document.getElementById("stepsVal").textContent=stepCount;
+    addBpmSample(Math.round(d));
+  },500);
 }
 
 function stopSensor(){
-  sensorActive=false;
-  if(typeof motionHandler==='function')window.removeEventListener('devicemotion',motionHandler);
-  if(demoTimer)clearInterval(demoTimer);
+  sensorActive=false; isPlaying=false; lockedBpm=0;
+  bpmSamples=[]; stableStartTime=0; currentAvgBpm=0;
+  if(typeof motionHandler==="function") window.removeEventListener("devicemotion",motionHandler);
+  if(demoTimer) clearInterval(demoTimer);
   if(currentAudio){currentAudio.pause();currentAudio=null;}
-  motionHandler=null;demoTimer=null;
+  motionHandler=null; demoTimer=null;
   setBtn(false);
-  document.getElementById('bpmNum').textContent='--';
-  for(let i=0;i<5;i++)document.getElementById('np'+i).textContent='-- -- --';
-  currentBpm=0;currentNearest=0;
+  document.getElementById("bpmNum").textContent="--";
+  document.getElementById("stabilizeFill").style.width="0%";
+  document.getElementById("stabilizeLabel").textContent="";
+  clearNp();
 }
 
 function setBtn(on){
-  const b=document.getElementById('startBtn');
-  b.textContent=on?'STOP':'GO';
-  b.style.color=on?'#ffaaaa':'white';
+  var b=document.getElementById("startBtn");
+  b.textContent=on?"STOP":"GO";
+  b.style.color=on?"#ffaaaa":"white";
 }
 </script>
 </body>
