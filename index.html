@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>CadenceRun</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f8f8; color: #1a1a1a; min-height: 100vh; }
+.app { max-width: 420px; margin: 0 auto; padding: 24px 16px; }
+h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; }
+.subtitle { font-size: 13px; color: #888; margin-bottom: 24px; }
+
+.bpm-wrap { text-align: center; margin-bottom: 24px; }
+.bpm-ring { width: 170px; height: 170px; border-radius: 50%; border: 3px solid #e0e0e0; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; transition: border-color 0.3s, box-shadow 0.3s; background: white; }
+.bpm-ring.active { border-color: #1D9E75; box-shadow: 0 0 0 8px rgba(29,158,117,0.08); }
+.bpm-ring.searching { border-color: #EF9F27; box-shadow: 0 0 0 8px rgba(239,159,39,0.08); }
+.bpm-num { font-size: 52px; font-weight: 600; line-height: 1; color: #1a1a1a; }
+.bpm-label { font-size: 13px; color: #888; margin-top: 4px; }
+.badge { display: inline-block; font-size: 12px; padding: 4px 14px; border-radius: 20px; background: #f0f0f0; color: #888; margin-top: 12px; }
+.badge.on { background: #E1F5EE; color: #0F6E56; }
+.badge.searching { background: #FAEEDA; color: #854F0B; }
+
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+.stat { background: white; border-radius: 12px; padding: 14px; text-align: center; border: 1px solid #eee; }
+.stat-label { font-size: 12px; color: #888; margin-bottom: 4px; }
+.stat-val { font-size: 22px; font-weight: 600; }
+
+.btn-tap { width: 100%; padding: 16px; font-size: 16px; font-weight: 500; background: white; border: 1.5px solid #ddd; border-radius: 14px; color: #1a1a1a; cursor: pointer; margin-bottom: 10px; transition: background 0.1s, transform 0.1s; -webkit-tap-highlight-color: transparent; }
+.btn-tap:active { background: #f0f0f0; transform: scale(0.98); }
+.btn-start { width: 100%; padding: 16px; font-size: 16px; font-weight: 600; background: #1D9E75; border: none; border-radius: 14px; color: white; cursor: pointer; margin-bottom: 20px; transition: background 0.15s, transform 0.1s; -webkit-tap-highlight-color: transparent; }
+.btn-start:active { transform: scale(0.98); }
+.btn-start.stop { background: #E24B4A; }
+
+.card { background: white; border-radius: 14px; padding: 16px; border: 1px solid #eee; margin-bottom: 12px; }
+.card-title { font-size: 14px; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+.playing-badge { font-size: 11px; padding: 3px 10px; border-radius: 10px; background: #E1F5EE; color: #0F6E56; display: none; }
+.now-playing { font-size: 13px; color: #555; }
+.progress { height: 3px; background: #f0f0f0; border-radius: 2px; margin-top: 10px; overflow: hidden; }
+.progress-fill { height: 100%; background: #1D9E75; width: 0%; transition: width 0.4s linear; }
+
+.track { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid #f5f5f5; cursor: pointer; }
+.track:last-child { border-bottom: none; }
+.track-idx { font-size: 12px; color: #bbb; min-width: 18px; }
+.track-name { font-size: 14px; flex: 1; color: #333; }
+.track-bpm-tag { font-size: 11px; color: #888; background: #f5f5f5; padding: 2px 8px; border-radius: 8px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: #1D9E75; flex-shrink: 0; }
+
+.hint { font-size: 12px; color: #aaa; text-align: center; margin-top: -14px; margin-bottom: 16px; }
+
+/* R2 설정 안내 */
+.r2-notice { background: #fffbe6; border: 1px solid #ffe58f; border-radius: 12px; padding: 12px 14px; font-size: 12px; color: #856404; margin-bottom: 16px; line-height: 1.6; }
+.r2-notice b { color: #664d00; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>CadenceRun</h1>
+  <p class="subtitle">내 달리기 박자에 음악이 정확히 맞춰집니다</p>
+
+  <div class="r2-notice" id="r2Notice">
+    <b>음악 연결 준비 중</b><br>
+    Cloudflare R2 설정 완료 후 실제 음악이 재생됩니다.<br>
+    지금은 데모 트랙으로 동작합니다.
+  </div>
+
+  <div class="bpm-wrap">
+    <div class="bpm-ring" id="bpmRing">
+      <span class="bpm-num" id="bpmDisplay">--</span>
+      <span class="bpm-label">BPM</span>
+    </div>
+    <div><span class="badge" id="statusBadge">대기 중</span></div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">평균 BPM</div>
+      <div class="stat-val" id="avgBpm">--</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">총 걸음수</div>
+      <div class="stat-val" id="stepCount">0</div>
+    </div>
+  </div>
+
+  <button class="btn-tap" id="tapBtn" onclick="handleTap()">탭으로 BPM 측정</button>
+  <p class="hint">발걸음 박자에 맞춰 탭하세요</p>
+
+  <button class="btn-start" id="startBtn" onclick="toggleSensor()">달리기 시작 (자동 감지)</button>
+
+  <div class="card">
+    <div class="card-title">
+      지금 재생 중
+      <span class="playing-badge" id="playingBadge">재생 중</span>
+    </div>
+    <div class="now-playing" id="nowPlaying">BPM이 감지되면 자동으로 음악이 시작됩니다</div>
+    <div class="progress"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">대기 목록</div>
+    <div id="trackList"><div style="font-size:13px;color:#aaa;padding:8px 0;">BPM 감지 후 표시됩니다</div></div>
+  </div>
+</div>
+
+<script>
+// ========== 설정 ==========
+// R2 연결 후 아래 URL을 변경하세요
+const R2_BASE_URL = ''; // 예: https://pub-xxxx.r2.dev
+const USE_R2 = R2_BASE_URL !== '';
+
+// 데모 트랙 (R2 연결 전 사용)
+const DEMO = {
+  150: ['Easy Pace 150', 'Warm Up 150', 'Base Beat 150'],
+  155: ['Steady Run 155', 'Jog Flow 155', 'Comfort 155'],
+  160: ['Energy Run 160', 'Power Stride 160', 'Race Beat 160'],
+  165: ['Flow State 165', 'Tempo High 165', 'Sprint Zone 165'],
+  170: ['Peak Runner 170', 'Fast Cadence 170', 'Ultra Beat 170'],
+  175: ['Max Effort 175', 'Speed Work 175', 'Fast Finish 175'],
+  180: ['Elite Pace 180', 'Full Sprint 180', 'Top Gear 180'],
+};
+
+// ========== 상태 ==========
+let tapTimes = [];
+let currentBpm = 0;
+let bpmHistory = [];
+let sensorActive = false;
+let stepCount = 0;
+let lastStepTime = 0;
+let motionHandler = null;
+let demoTimer = null;
+let progressInterval = null;
+let progressValue = 0;
+let currentTrackIdx = 0;
+let currentAudio = null;
+
+// ========== BPM 처리 ==========
+function getNearestBpm(bpm) {
+  const keys = Object.keys(DEMO).map(Number);
+  return keys.reduce((a, b) => Math.abs(b - bpm) < Math.abs(a - bpm) ? b : a);
+}
+
+function updateBpm(bpm) {
+  currentBpm = bpm;
+  bpmHistory.push(bpm);
+  if (bpmHistory.length > 12) bpmHistory.shift();
+  const avg = Math.round(bpmHistory.reduce((a,b)=>a+b,0)/bpmHistory.length);
+
+  document.getElementById('bpmDisplay').textContent = bpm;
+  document.getElementById('avgBpm').textContent = avg;
+  document.getElementById('bpmRing').className = 'bpm-ring active';
+  const badge = document.getElementById('statusBadge');
+  badge.textContent = sensorActive ? '자동 감지 중' : '탭 측정 중';
+  badge.className = 'badge on';
+
+  updateMusic(bpm);
+}
+
+// ========== 음악 ==========
+function updateMusic(bpm) {
+  const nearest = getNearestBpm(bpm);
+  const tracks = DEMO[nearest];
+  const idx = currentTrackIdx % tracks.length;
+
+  document.getElementById('playingBadge').style.display = 'inline-block';
+  document.getElementById('nowPlaying').textContent = tracks[idx] + '  ·  ' + nearest + ' BPM';
+
+  if (USE_R2) {
+    playR2Track(nearest, idx + 1);
+  }
+
+  startProgress();
+  renderTracks(tracks, nearest, idx);
+}
+
+function playR2Track(bpm, trackNum) {
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+  const url = `${R2_BASE_URL}/${bpm}/track${trackNum}.mp3`;
+  currentAudio = new Audio(url);
+  currentAudio.play().catch(() => {});
+  currentAudio.onended = () => { currentTrackIdx++; updateMusic(currentBpm); };
+}
+
+function startProgress() {
+  if (progressInterval) clearInterval(progressInterval);
+  progressValue = 0;
+  document.getElementById('progressFill').style.width = '0%';
+  progressInterval = setInterval(() => {
+    progressValue += 0.3;
+    if (progressValue >= 100) {
+      progressValue = 0;
+      currentTrackIdx++;
+      if (currentBpm > 0) updateMusic(currentBpm);
+    }
+    document.getElementById('progressFill').style.width = progressValue + '%';
+  }, 100);
+}
+
+function renderTracks(tracks, bpm, activeIdx) {
+  document.getElementById('trackList').innerHTML = tracks.map((t, i) =>
+    `<div class="track" onclick="selectTrack(${i})">
+      ${i === activeIdx ? '<div class="dot"></div>' : `<span class="track-idx">${i+1}</span>`}
+      <span class="track-name">${t}</span>
+      <span class="track-bpm-tag">${bpm} BPM</span>
+    </div>`
+  ).join('');
+}
+
+function selectTrack(idx) {
+  currentTrackIdx = idx;
+  if (currentBpm > 0) updateMusic(currentBpm);
+}
+
+// ========== 탭 ==========
+function handleTap() {
+  const now = Date.now();
+  tapTimes.push(now);
+  if (tapTimes.length > 8) tapTimes.shift();
+  if (tapTimes.length >= 2) {
+    const intervals = [];
+    for (let i = 1; i < tapTimes.length; i++) intervals.push(tapTimes[i] - tapTimes[i-1]);
+    const avg = intervals.reduce((a,b)=>a+b,0)/intervals.length;
+    const bpm = Math.round(60000 / avg);
+    if (bpm > 100 && bpm < 230) updateBpm(bpm);
+  }
+  const btn = document.getElementById('tapBtn');
+  btn.style.background = '#e8f5f0';
+  setTimeout(() => btn.style.background = 'white', 120);
+}
+
+// ========== 센서 ==========
+function toggleSensor() {
+  if (!sensorActive) startSensor();
+  else stopSensor();
+}
+
+function startSensor() {
+  const btn = document.getElementById('startBtn');
+  if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+    DeviceMotionEvent.requestPermission().then(s => {
+      if (s === 'granted') activateMotion();
+      else startDemo();
+    }).catch(() => startDemo());
+  } else if (window.DeviceMotionEvent) {
+    activateMotion();
+  } else {
+    startDemo();
+  }
+}
+
+function activateMotion() {
+  sensorActive = true;
+  updateSensorUI(true);
+  let lastMag = 0;
+  let stepTimes = [];
+  motionHandler = (e) => {
+    const a = e.accelerationIncludingGravity;
+    if (!a) return;
+    const mag = Math.sqrt(a.x**2 + a.y**2 + a.z**2);
+    const now = Date.now();
+    if (mag > 13 && lastMag <= 13 && (now - lastStepTime) > 220) {
+      lastStepTime = now;
+      stepTimes.push(now);
+      stepCount++;
+      document.getElementById('stepCount').textContent = stepCount;
+      if (stepTimes.length > 8) stepTimes.shift();
+      if (stepTimes.length >= 4) {
+        const ivs = [];
+        for (let i = 1; i < stepTimes.length; i++) ivs.push(stepTimes[i] - stepTimes[i-1]);
+        const avg = ivs.reduce((a,b)=>a+b,0)/ivs.length;
+        const bpm = Math.round(60000 / avg);
+        if (bpm > 100 && bpm < 230) updateBpm(bpm);
+      }
+    }
+    lastMag = mag;
+  };
+  window.addEventListener('devicemotion', motionHandler);
+}
+
+function startDemo() {
+  sensorActive = true;
+  updateSensorUI(true);
+  let demoBpm = 158;
+  demoTimer = setInterval(() => {
+    demoBpm = Math.max(140, Math.min(185, demoBpm + (Math.random() > 0.5 ? 1 : -1)));
+    stepCount++;
+    document.getElementById('stepCount').textContent = stepCount;
+    updateBpm(Math.round(demoBpm));
+  }, 420);
+}
+
+function stopSensor() {
+  sensorActive = false;
+  if (typeof motionHandler === 'function') window.removeEventListener('devicemotion', motionHandler);
+  if (demoTimer) clearInterval(demoTimer);
+  motionHandler = null; demoTimer = null;
+  updateSensorUI(false);
+  document.getElementById('bpmRing').className = 'bpm-ring';
+  document.getElementById('statusBadge').textContent = '대기 중';
+  document.getElementById('statusBadge').className = 'badge';
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+}
+
+function updateSensorUI(on) {
+  const btn = document.getElementById('startBtn');
+  btn.textContent = on ? '감지 중지' : '달리기 시작 (자동 감지)';
+  btn.className = on ? 'btn-start stop' : 'btn-start';
+}
+</script>
+</body>
+</html>
