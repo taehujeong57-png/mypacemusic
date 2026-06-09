@@ -66,7 +66,7 @@ var DEMO_TRACKS = {
 };
 var BPM_LIST=[150,152,154,156,158,160,162,164,166,168,170,172,174,176,178,180];
 var DRIVE_FILES={};
-var STABLE_SECONDS=7, STABLE_TOLERANCE=2, CHANGE_THRESHOLD=5, AVG_WINDOW=12;
+var STABLE_SECONDS=7, STABLE_TOLERANCE=4, CHANGE_THRESHOLD=8, AVG_WINDOW=12;
 
 function getNearestBpm(b){return BPM_LIST.reduce(function(a,c){return Math.abs(c-b)<Math.abs(a-b)?c:a;});}
 
@@ -116,8 +116,8 @@ function enterMeasuring(startVal){
 
 function checkStability(avg){
   if(bpmSamples.length<5){setLabel("케이던스 측정 중...");setBar(0);return;}
-  var recent=bpmSamples.slice(-6);
-  var stable=recent.every(function(x){return Math.abs(x-avg)<=STABLE_TOLERANCE;});
+  var recent=bpmSamples.slice(-4);
+  var stable=recent.length>=4 && recent.every(function(x){return Math.abs(x-avg)<=STABLE_TOLERANCE;});
   if(stable){
     if(stableStartTime===0) stableStartTime=Date.now();
     var elapsed=(Date.now()-stableStartTime)/1000;
