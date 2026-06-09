@@ -88,7 +88,6 @@ var DEMO_TRACKS = {
 };
 var BPM_LIST = [150,152,154,156,158,160,162,164,166,168,170,172,174,176,178,180];
 var DRIVE_FILES = {};
-
 var STABLE_SECONDS = 7;
 var STABLE_TOLERANCE = 2;
 var CHANGE_THRESHOLD = 5;
@@ -98,42 +97,64 @@ function getNearestBpm(b) {
   return BPM_LIST.reduce(function(a,c){ return Math.abs(c-b)<Math.abs(a-b)?c:a; });
 }
 
-var sensorActive=false, stepCount=0, lastStepTime=0;
-var motionHandler=null, demoTimer=null;
-var currentTrackIdx=0, currentAudio=null;
-var bpmSamples=[], lockedBpm=0;
-var stableStartTime=0, isPlaying=false;
+// ===== 상태 =====
+// MODE: "idle" | "measuring" | "locked"
+var mode = "idle";
+var sensorActive = false;
+var stepCount = 0, lastStepTime = 0;
+var motionHandler = null, demoTimer = null;
+var currentTrackIdx = 0, currentAudio = null;
+var bpmSamples = [], lockedBpm = 0, stableStartTime = 0;
 
-function addBpmSample(bpm) {
-  bpmSamples.push(bpm);
-  if(bpmSamples.length > AVG_WINDOW) bpmSamples.shift();
-  var sum=0;
-  for(var i=0;i<bpmSamples.length;i++) sum+=bpmSamples[i];
-  var avg = Math.round(sum/bpmSamples.length);
+function setBpmDisplay(val) {
+  document.getElementById("bpmNum").textContent = val;
+}
+function setLabel(txt) {
+  document.getElementById("stabilizeLabel").textContent = txt;
+}
+function setBar(pct) {
+  document.getElementById("stabilizeFill").style.width = pct + "%";
+}
 
-  if(isPlaying) {
-    // 음악 재생 중 — 숫자 고정, 변화만 감지
-    if(Math.abs(avg - lockedBpm) > CHANGE_THRESHOLD && bpmSamples.length >= 6) {
-      // 페이스 변화 감지! 재측정 모드
-      isPlaying=false; lockedBpm=0; bpmSamples=[];
-      if(currentAudio){currentAudio.pause();currentAudio=null;}
-      clearNp();
-      stableStartTime=0;
-      document.getElementById("bpmNum").textContent = avg;
-      document.getElementById("stabilizeLabel").textContent = "케이던스 측정 중...";
+// 새 BPM 샘플 수신
+function onNewBpm(bpm) {
+  if(mode === "locked") {
+    // 고정 모드: 숫자 건드리지 않음, 변화만 감지
+    bpmSamples.push(bpm);
+    if(bpmSamples.length > AVG_WINDOW) bpmSamples.shift();
+    var sum=0; for(var i=0;i<bpmSamples.length;i++) sum+=bpmSamples[i];
+    var avg = Math.round(sum/bpmSamples.length);
+    if(bpmSamples.length >= 8 && Math.abs(avg - lockedBpm) > CHANGE_THRESHOLD) {
+      enterMeasuring(avg);
     }
-    // 재생 중에는 숫자 건드리지 않음
-  } else {
-    // 측정 중 — 숫자 실시간 업데이트
-    document.getElementById("bpmNum").textContent = avg;
-    checkStability(avg);
+    return;
+  }
+
+  if(mode === "measuring") {
+    bpmSamples.push(bpm);
+    if(bpmSamples.length > AVG_WINDOW) bpmSamples.shift();
+    var sum2=0; for(var j=0;j<bpmSamples.length;j++) sum2+=bpmSamples[j];
+    var avg2 = Math.round(sum2/bpmSamples.length);
+    setBpmDisplay(avg2);
+    checkStability(avg2);
   }
 }
 
+function enterMeasuring(startVal) {
+  mode = "measuring";
+  bpmSamples = [];
+  stableStartTime = 0;
+  if(currentAudio){currentAudio.pause();currentAudio=null;}
+  clearNp();
+  setBar(0);
+  setLabel("케이던스 측정 중...");
+  if(startVal) setBpmDisplay(startVal);
+}
+
 function checkStability(avg) {
-  if(bpmSamples.length < 4) {
-    document.getElementById("stabilizeLabel").textContent = "케이던스 측정 중...";
-    document.getElementById("stabilizeFill").style.width = "0%";
+  if(bpmSamples.length < 5) {
+    setLabel("케이던스 측정 중...");
+    setBar(0);
     return;
   }
   var recent = bpmSamples.slice(-6);
@@ -142,28 +163,29 @@ function checkStability(avg) {
     if(Math.abs(recent[i]-avg) > STABLE_TOLERANCE) { stable=false; break; }
   }
   if(stable) {
-    if(stableStartTime===0) stableStartTime=Date.now();
+    if(stableStartTime === 0) stableStartTime = Date.now();
     var elapsed = (Date.now()-stableStartTime)/1000;
     var pct = Math.min(elapsed/STABLE_SECONDS*100, 100);
-    document.getElementById("stabilizeFill").style.width = pct+"%";
-    var remaining = Math.ceil(STABLE_SECONDS-elapsed);
-    document.getElementById("stabilizeLabel").textContent = remaining>0 ? ("안정화 중... "+remaining+"초") : "";
+    setBar(pct);
+    var rem = Math.ceil(STABLE_SECONDS-elapsed);
+    setLabel(rem > 0 ? ("안정화 중... "+rem+"초") : "");
     if(elapsed >= STABLE_SECONDS) {
-      lockAndPlay(getNearestBpm(avg));
+      enterLocked(getNearestBpm(avg));
     }
   } else {
-    stableStartTime=0;
-    document.getElementById("stabilizeFill").style.width = "0%";
-    document.getElementById("stabilizeLabel").textContent = "케이던스 측정 중...";
+    stableStartTime = 0;
+    setBar(0);
+    setLabel("케이던스 측정 중...");
   }
 }
 
-function lockAndPlay(nearest) {
-  lockedBpm=nearest; isPlaying=true; stableStartTime=0;
-  // 숫자 고정
-  document.getElementById("bpmNum").textContent = nearest;
-  document.getElementById("stabilizeFill").style.width = "0%";
-  document.getElementById("stabilizeLabel").textContent = "";
+function enterLocked(nearest) {
+  mode = "locked";
+  lockedBpm = nearest;
+  bpmSamples = [];
+  setBpmDisplay(nearest);  // 숫자 고정
+  setBar(0);
+  setLabel("");
   renderTracks(nearest);
 }
 
@@ -207,6 +229,7 @@ function startSensor(){
 
 function activateMotion(){
   sensorActive=true; setBtn(true);
+  enterMeasuring(null);
   var lastMag=0, stepTimes=[];
   motionHandler = function(e){
     var a=e.accelerationIncludingGravity; if(!a)return;
@@ -216,11 +239,11 @@ function activateMotion(){
       document.getElementById("stepsVal").textContent=stepCount;
       if(stepTimes.length>8) stepTimes.shift();
       if(stepTimes.length>=4){
-        var ivs=[], sum2=0;
+        var ivs=[], s=0;
         for(var i=1;i<stepTimes.length;i++) ivs.push(stepTimes[i]-stepTimes[i-1]);
-        for(var j=0;j<ivs.length;j++) sum2+=ivs[j];
-        var bpm=Math.round(60000/(sum2/ivs.length));
-        if(bpm>100&&bpm<230) addBpmSample(bpm);
+        for(var j=0;j<ivs.length;j++) s+=ivs[j];
+        var bpm=Math.round(60000/(s/ivs.length));
+        if(bpm>100&&bpm<230) onNewBpm(bpm);
       }
     }
     lastMag=mag;
@@ -230,25 +253,25 @@ function activateMotion(){
 
 function startDemo(){
   sensorActive=true; setBtn(true);
+  enterMeasuring(null);
   var d=162;
   demoTimer=setInterval(function(){
     d=Math.max(150,Math.min(180,d+(Math.random()>0.5?0.5:-0.5)));
     stepCount++; document.getElementById("stepsVal").textContent=stepCount;
-    addBpmSample(Math.round(d));
+    onNewBpm(Math.round(d));
   },500);
 }
 
 function stopSensor(){
-  sensorActive=false; isPlaying=false; lockedBpm=0;
+  sensorActive=false; mode="idle"; lockedBpm=0;
   bpmSamples=[]; stableStartTime=0;
   if(typeof motionHandler==="function") window.removeEventListener("devicemotion",motionHandler);
   if(demoTimer) clearInterval(demoTimer);
   if(currentAudio){currentAudio.pause();currentAudio=null;}
   motionHandler=null; demoTimer=null;
   setBtn(false);
-  document.getElementById("bpmNum").textContent="--";
-  document.getElementById("stabilizeFill").style.width="0%";
-  document.getElementById("stabilizeLabel").textContent="";
+  setBpmDisplay("--");
+  setBar(0); setLabel("");
   clearNp();
 }
 
