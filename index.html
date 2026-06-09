@@ -111,13 +111,16 @@ function addBpmSample(bpm) {
   for(var i=0;i<bpmSamples.length;i++) sum+=bpmSamples[i];
   var avg = Math.round(sum/bpmSamples.length);
   currentAvgBpm = avg;
-  document.getElementById("bpmNum").textContent = avg;
+  if(!isPlaying) {
+    document.getElementById("bpmNum").textContent = avg;
+  }
 
   if(isPlaying) {
     if(Math.abs(avg - lockedBpm) > CHANGE_THRESHOLD && bpmSamples.length >= 6) {
       isPlaying=false; lockedBpm=0; bpmSamples=[];
       if(currentAudio){currentAudio.pause();currentAudio=null;}
       clearNp();
+      document.getElementById("bpmNum").textContent = avg;
       stableStartTime=0;
     }
   } else {
@@ -156,6 +159,7 @@ function checkStability(avg) {
 
 function lockAndPlay(nearest) {
   lockedBpm=nearest; isPlaying=true; stableStartTime=0;
+  document.getElementById("bpmNum").textContent = nearest;
   document.getElementById("stabilizeFill").style.width = "0%";
   document.getElementById("stabilizeLabel").textContent = "";
   renderTracks(nearest);
