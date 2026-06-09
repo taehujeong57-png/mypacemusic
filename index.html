@@ -24,8 +24,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:flex-
 #np4{left:21.6%;top:95.8%;width:58.4%;height:3.2%;font-family:"Arial Black",Arial,sans-serif;font-size:clamp(11px,3.3vw,20px);font-weight:700;color:rgba(255,255,255,0.28);letter-spacing:2px;display:flex;align-items:center;justify-content:center;text-transform:lowercase;white-space:nowrap;overflow:hidden;}
 #prevBtn{left:0%;top:41%;width:18%;height:25%;background:transparent;border:none;cursor:pointer;-webkit-tap-highlight-color:transparent;}
 #nextBtn{left:82%;top:41%;width:18%;height:25%;background:transparent;border:none;cursor:pointer;-webkit-tap-highlight-color:transparent;}
-/* 디버그 패널 */
-#debug{position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.85);color:#0f0;font-family:monospace;font-size:11px;padding:6px 10px;z-index:999;line-height:1.6;}
+
 </style>
 </head>
 <body>
@@ -44,7 +43,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:flex-
   <button class="dyn" id="prevBtn" onclick="prevTrack()"></button>
   <button class="dyn" id="nextBtn" onclick="nextTrack()"></button>
 </div>
-<div id="debug">대기 중...</div>
+
 <script>
 var DEMO_TRACKS = {
   150:["easy pace 150-1","easy pace 150-2","easy pace 150-3"],
@@ -75,11 +74,6 @@ var motionHandler=null, demoTimer=null;
 var currentTrackIdx=0, currentAudio=null;
 var bpmSamples=[], lockedBpm=0, stableStartTime=0;
 
-function dbg(msg){
-  document.getElementById("debug").textContent = 
-    "MODE:"+mode+" | locked:"+lockedBpm+" | samples:"+bpmSamples.length+" | "+msg;
-}
-
 function setBpmDisplay(val){document.getElementById("bpmNum").textContent=val;}
 function setLabel(t){document.getElementById("stabilizeLabel").textContent=t;}
 function setBar(p){document.getElementById("stabilizeFill").style.width=p+"%";}
@@ -91,7 +85,6 @@ function onNewBpm(bpm){
     var avg=Math.round(bpmSamples.reduce(function(a,b){return a+b;},0)/bpmSamples.length);
     dbg("locked avg="+avg+" diff="+Math.abs(avg-lockedBpm));
     if(bpmSamples.length>=8 && Math.abs(avg-lockedBpm)>CHANGE_THRESHOLD){
-      dbg("변화감지! -> measuring");
       enterMeasuring(avg);
     }
     return;
@@ -111,7 +104,6 @@ function enterMeasuring(startVal){
   if(currentAudio){currentAudio.pause();currentAudio=null;}
   clearNp(); setBar(0); setLabel("케이던스 측정 중...");
   if(startVal) setBpmDisplay(startVal);
-  dbg("enterMeasuring");
 }
 
 function checkStability(avg){
@@ -136,7 +128,6 @@ function enterLocked(nearest){
   document.getElementById("bpmNum").style.color="#ffff00";
   setBar(0); setLabel("");
   renderTracks(nearest);
-  dbg("LOCKED bpm="+nearest);
 }
 
 function renderTracks(nearest){
@@ -173,7 +164,6 @@ function startSensor(){
 
 function activateMotion(){
   sensorActive=true; setBtn(true); enterMeasuring(null);
-  dbg("실제 센서 활성화");
   var lastMag=0, stepTimes=[];
   motionHandler=function(e){
     var a=e.accelerationIncludingGravity; if(!a)return;
@@ -197,7 +187,6 @@ function activateMotion(){
 
 function startDemo(){
   sensorActive=true; setBtn(true); enterMeasuring(null);
-  dbg("데모모드");
   var d=162;
   demoTimer=setInterval(function(){
     d=Math.max(150,Math.min(180,d+(Math.random()>0.5?0.5:-0.5)));
@@ -216,7 +205,6 @@ function stopSensor(){
   setBtn(false); setBpmDisplay("--");
   document.getElementById("bpmNum").style.color="white";
   setBar(0); setLabel(""); clearNp();
-  dbg("정지");
 }
 
 function setBtn(on){
