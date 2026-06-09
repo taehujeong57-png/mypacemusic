@@ -12,9 +12,9 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:flex-
 .bg-img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:fill;display:block;}
 .dyn{position:absolute;}
 #bpmNum{
-  left:29.8%;top:40.2%;width:36.9%;height:10.6%;
+  left:22%;top:38%;width:54%;height:14%;
   font-family:"Arial Black",Arial,sans-serif;
-  font-size:clamp(28px,10vw,80px);font-weight:900;color:white;
+  font-size:clamp(40px,14vw,112px);font-weight:900;color:white;
   display:flex;align-items:center;justify-content:center;letter-spacing:-2px;
 }
 #startBtn{
@@ -101,7 +101,7 @@ function getNearestBpm(b) {
 var sensorActive=false, stepCount=0, lastStepTime=0;
 var motionHandler=null, demoTimer=null;
 var currentTrackIdx=0, currentAudio=null;
-var bpmSamples=[], currentAvgBpm=0, lockedBpm=0;
+var bpmSamples=[], lockedBpm=0;
 var stableStartTime=0, isPlaying=false;
 
 function addBpmSample(bpm) {
@@ -110,20 +110,22 @@ function addBpmSample(bpm) {
   var sum=0;
   for(var i=0;i<bpmSamples.length;i++) sum+=bpmSamples[i];
   var avg = Math.round(sum/bpmSamples.length);
-  currentAvgBpm = avg;
-  if(!isPlaying) {
-    document.getElementById("bpmNum").textContent = avg;
-  }
 
   if(isPlaying) {
+    // 음악 재생 중 — 숫자 고정, 변화만 감지
     if(Math.abs(avg - lockedBpm) > CHANGE_THRESHOLD && bpmSamples.length >= 6) {
+      // 페이스 변화 감지! 재측정 모드
       isPlaying=false; lockedBpm=0; bpmSamples=[];
       if(currentAudio){currentAudio.pause();currentAudio=null;}
       clearNp();
-      document.getElementById("bpmNum").textContent = avg;
       stableStartTime=0;
+      document.getElementById("bpmNum").textContent = avg;
+      document.getElementById("stabilizeLabel").textContent = "케이던스 측정 중...";
     }
+    // 재생 중에는 숫자 건드리지 않음
   } else {
+    // 측정 중 — 숫자 실시간 업데이트
+    document.getElementById("bpmNum").textContent = avg;
     checkStability(avg);
   }
 }
@@ -134,7 +136,6 @@ function checkStability(avg) {
     document.getElementById("stabilizeFill").style.width = "0%";
     return;
   }
-  var nearest = getNearestBpm(avg);
   var recent = bpmSamples.slice(-6);
   var stable = true;
   for(var i=0;i<recent.length;i++) {
@@ -148,7 +149,7 @@ function checkStability(avg) {
     var remaining = Math.ceil(STABLE_SECONDS-elapsed);
     document.getElementById("stabilizeLabel").textContent = remaining>0 ? ("안정화 중... "+remaining+"초") : "";
     if(elapsed >= STABLE_SECONDS) {
-      lockAndPlay(nearest);
+      lockAndPlay(getNearestBpm(avg));
     }
   } else {
     stableStartTime=0;
@@ -159,6 +160,7 @@ function checkStability(avg) {
 
 function lockAndPlay(nearest) {
   lockedBpm=nearest; isPlaying=true; stableStartTime=0;
+  // 숫자 고정
   document.getElementById("bpmNum").textContent = nearest;
   document.getElementById("stabilizeFill").style.width = "0%";
   document.getElementById("stabilizeLabel").textContent = "";
@@ -214,10 +216,10 @@ function activateMotion(){
       document.getElementById("stepsVal").textContent=stepCount;
       if(stepTimes.length>8) stepTimes.shift();
       if(stepTimes.length>=4){
-        var ivs=[];
+        var ivs=[], sum2=0;
         for(var i=1;i<stepTimes.length;i++) ivs.push(stepTimes[i]-stepTimes[i-1]);
-        var sum=0; for(var j=0;j<ivs.length;j++) sum+=ivs[j];
-        var bpm=Math.round(60000/(sum/ivs.length));
+        for(var j=0;j<ivs.length;j++) sum2+=ivs[j];
+        var bpm=Math.round(60000/(sum2/ivs.length));
         if(bpm>100&&bpm<230) addBpmSample(bpm);
       }
     }
@@ -238,7 +240,7 @@ function startDemo(){
 
 function stopSensor(){
   sensorActive=false; isPlaying=false; lockedBpm=0;
-  bpmSamples=[]; stableStartTime=0; currentAvgBpm=0;
+  bpmSamples=[]; stableStartTime=0;
   if(typeof motionHandler==="function") window.removeEventListener("devicemotion",motionHandler);
   if(demoTimer) clearInterval(demoTimer);
   if(currentAudio){currentAudio.pause();currentAudio=null;}
