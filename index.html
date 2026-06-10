@@ -44,7 +44,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:flex-
 </div>
 
 <script>
-// ── R2 스토리지 설정 ──────────────────────────────────────
+// ── R2 스토리지 ───────────────────────────────────────────
 var R2_BASE = "https://pub-c839bc8e4f8944b7bc78feb44003d00b.r2.dev";
 
 var SONGS = {
@@ -67,12 +67,15 @@ var SONGS = {
 };
 
 // ── 설정 ──────────────────────────────────────────────────
-var BPM_LIST=[150,152,154,156,158,160,162,164,166,168,170,172,174,176,178,180];
-var STABLE_SECONDS=7, STABLE_TOLERANCE=4, CHANGE_THRESHOLD=4, AVG_WINDOW=12;
+var BPM_LIST = [150,152,154,156,158,160,162,164,166,168,170,172,174,176,178,180];
+var STEPS_TO_LOCK = 10;   // 10발자국 누적 평균으로 확정
+var CHANGE_THRESHOLD = 4; // 이 BPM 이상 차이나면 변화로 간주
+var CHANGE_COUNT = 3;     // 연속 3발 감지되면 재측정 시작
 
 // ── 유틸 ──────────────────────────────────────────────────
-function getNearestBpm(b){return BPM_LIST.reduce(function(a,c){return Math.abs(c-b)<Math.abs(a-b)?c:a;});}
-
+function getNearestBpm(b){
+  return BPM_LIST.reduce(function(a,c){return Math.abs(c-b)<Math.abs(a-b)?c:a;});
+}
 function getDisplayTitle(filename){
   return filename
     .replace(/\.mp3$/i,'')
@@ -83,77 +86,96 @@ function getDisplayTitle(filename){
     .replace(/\s+/g,' ')
     .trim();
 }
-
 function getR2Url(bpm, filename){
   return R2_BASE + "/" + bpm + "/" + encodeURIComponent(filename);
 }
 
 // ── 상태 변수 ─────────────────────────────────────────────
-var mode="idle", sensorActive=false, stepCount=0, lastStepTime=0;
-var motionHandler=null, demoTimer=null;
-var currentTrackIdx=0, currentAudio=null;
-var bpmSamples=[], lockedBpm=0, stableStartTime=0;
+var mode = "idle";         // idle / measuring / locked
+var sensorActive = false;
+var stepCount = 0;
+var lastStepTime = 0;
+var motionHandler = null;
+var demoTimer = null;
+var currentTrackIdx = 0;
+var currentAudio = null;
+var lockedBpm = 0;
+
+// measuring 상태 전용
+var measureSamples = [];   // 발자국별 BPM 누적
+
+// locked 상태 전용
+var changeBuffer = [];     // 연속 변화 감지 버퍼
 
 // ── UI 헬퍼 ───────────────────────────────────────────────
-function setBpmDisplay(val){document.getElementById("bpmNum").textContent=val;}
-function setLabel(t){document.getElementById("stabilizeLabel").textContent=t;}
-function setBar(p){document.getElementById("stabilizeFill").style.width=p+"%";}
-function clearNp(){for(var i=0;i<5;i++) document.getElementById("np"+i).textContent="-- -- --";}
+function setBpmDisplay(val){ document.getElementById("bpmNum").textContent = val; }
+function setLabel(t){ document.getElementById("stabilizeLabel").textContent = t; }
+function setBar(p){ document.getElementById("stabilizeFill").style.width = p + "%"; }
+function clearNp(){ for(var i=0;i<5;i++) document.getElementById("np"+i).textContent="-- -- --"; }
 
-// ── BPM 처리 ──────────────────────────────────────────────
-function onNewBpm(bpm){
-  if(mode==="locked"){
-    bpmSamples.push(bpm);
-    if(bpmSamples.length>AVG_WINDOW) bpmSamples.shift();
-    var avg=Math.round(bpmSamples.reduce(function(a,b){return a+b;},0)/bpmSamples.length);
-    if(bpmSamples.length>=8 && Math.abs(avg-lockedBpm)>CHANGE_THRESHOLD){
-      enterMeasuring(avg);
-    }
-    return;
-  }
-  if(mode==="measuring"){
-    bpmSamples.push(bpm);
-    if(bpmSamples.length>AVG_WINDOW) bpmSamples.shift();
-    var avg2=Math.round(bpmSamples.reduce(function(a,b){return a+b;},0)/bpmSamples.length);
-    setBpmDisplay(avg2);
-    checkStability(avg2);
-  }
-}
-
-function enterMeasuring(startVal){
-  mode="measuring"; bpmSamples=[]; stableStartTime=0;
-  if(currentAudio){currentAudio.pause();currentAudio=null;}
-  clearNp(); setBar(0); setLabel("케이던스 측정 중...");
-  if(startVal) setBpmDisplay(startVal);
-}
-
-function checkStability(avg){
-  if(bpmSamples.length<5){setLabel("케이던스 측정 중...");setBar(0);return;}
-  var recent=bpmSamples.slice(-4);
-  var stable=recent.length>=4 && recent.every(function(x){return Math.abs(x-avg)<=STABLE_TOLERANCE;});
-  if(stable){
-    if(stableStartTime===0) stableStartTime=Date.now();
-    var elapsed=(Date.now()-stableStartTime)/1000;
-    setBar(Math.min(elapsed/STABLE_SECONDS*100,100));
-    var rem=Math.ceil(STABLE_SECONDS-elapsed);
-    setLabel(rem>0?("안정화 중... "+rem+"초"):"");
-    if(elapsed>=STABLE_SECONDS) enterLocked(getNearestBpm(avg));
-  } else {
-    stableStartTime=0; setBar(0); setLabel("케이던스 측정 중...");
-  }
+// ── 모드 전환 ─────────────────────────────────────────────
+function enterMeasuring(){
+  mode = "measuring";
+  measureSamples = [];
+  changeBuffer = [];
+  if(currentAudio){ currentAudio.pause(); currentAudio = null; }
+  clearNp();
+  setBar(0);
+  setBpmDisplay("--");
+  setLabel("케이던스 측정 중...");
 }
 
 function enterLocked(nearest){
-  mode="locked"; lockedBpm=nearest; bpmSamples=[];
+  mode = "locked";
+  lockedBpm = nearest;
+  changeBuffer = [];
   setBpmDisplay(nearest);
-  document.getElementById("bpmNum").style.color="#ffff00";
-  setBar(0); setLabel("");
-  currentTrackIdx=0;
+  document.getElementById("bpmNum").style.color = "#ffff00";
+  setBar(0);
+  setLabel("");
+  currentTrackIdx = 0;
   renderNowPlaying(nearest);
   playTrack(nearest, 0);
 }
 
-// ── 재생 (R2) ─────────────────────────────────────────────
+// ── 발자국 BPM 처리 ───────────────────────────────────────
+function onNewBpm(bpm){
+
+  // ── MEASURING: 10발자국 누적 평균으로 확정 ──
+  if(mode === "measuring"){
+    measureSamples.push(bpm);
+    var progress = (measureSamples.length / STEPS_TO_LOCK) * 100;
+    setBar(Math.min(progress, 100));
+    setLabel(measureSamples.length + " / " + STEPS_TO_LOCK + " 발자국");
+
+    if(measureSamples.length >= STEPS_TO_LOCK){
+      var avg = Math.round(measureSamples.reduce(function(a,b){return a+b;},0) / measureSamples.length);
+      enterLocked(getNearestBpm(avg));
+    }
+    return;
+  }
+
+  // ── LOCKED: 연속 3발이 ±4 이상이면 재측정 ──
+  if(mode === "locked"){
+    if(Math.abs(bpm - lockedBpm) > CHANGE_THRESHOLD){
+      changeBuffer.push(bpm);
+      if(changeBuffer.length >= CHANGE_COUNT){
+        // 연속 3발 감지 - 재측정 시작 (3발을 초기 샘플로 활용)
+        enterMeasuring();
+        measureSamples = changeBuffer.slice();
+        var progress = (measureSamples.length / STEPS_TO_LOCK) * 100;
+        setBar(Math.min(progress, 100));
+        setLabel(measureSamples.length + " / " + STEPS_TO_LOCK + " 발자국");
+      }
+    } else {
+      // 범위 안이면 버퍼 초기화 - 일시적 흔들림 무시
+      changeBuffer = [];
+    }
+    return;
+  }
+}
+
+// ── 재생 ──────────────────────────────────────────────────
 function renderNowPlaying(nearest){
   var tracks = SONGS[nearest] || [];
   var len = tracks.length;
@@ -165,24 +187,20 @@ function renderNowPlaying(nearest){
 }
 
 function playTrack(nearest, idx){
-  if(currentAudio){currentAudio.pause();currentAudio=null;}
+  if(currentAudio){ currentAudio.pause(); currentAudio = null; }
   var tracks = SONGS[nearest] || [];
   if(!tracks.length) return;
   var file = tracks[idx % tracks.length];
-  var url = getR2Url(nearest, file);
-  currentAudio = new Audio(url);
-  currentAudio.play().catch(function(e){console.log("Play error:", e);});
+  currentAudio = new Audio(getR2Url(nearest, file));
+  currentAudio.play().catch(function(e){ console.log("Play error:", e); });
   currentAudio.onended = function(){
     currentTrackIdx++;
-    if(lockedBpm){
-      renderNowPlaying(lockedBpm);
-      playTrack(lockedBpm, currentTrackIdx);
-    }
+    if(lockedBpm){ renderNowPlaying(lockedBpm); playTrack(lockedBpm, currentTrackIdx); }
   };
 }
 
 function prevTrack(){
-  if(currentTrackIdx>0) currentTrackIdx--;
+  if(currentTrackIdx > 0) currentTrackIdx--;
   if(lockedBpm){ renderNowPlaying(lockedBpm); playTrack(lockedBpm, currentTrackIdx); }
 }
 function nextTrack(){
@@ -191,13 +209,13 @@ function nextTrack(){
 }
 
 // ── 센서 ──────────────────────────────────────────────────
-function toggleSensor(){if(!sensorActive)startSensor();else stopSensor();}
+function toggleSensor(){ if(!sensorActive) startSensor(); else stopSensor(); }
 
 function startSensor(){
-  if(typeof DeviceMotionEvent!=="undefined"&&typeof DeviceMotionEvent.requestPermission==="function"){
+  if(typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function"){
     DeviceMotionEvent.requestPermission().then(function(s){
-      if(s==="granted") activateMotion(); else startDemo();
-    }).catch(function(){startDemo();});
+      if(s === "granted") activateMotion(); else startDemo();
+    }).catch(function(){ startDemo(); });
   } else if(window.DeviceMotionEvent){
     activateMotion();
   } else {
@@ -206,56 +224,55 @@ function startSensor(){
 }
 
 function activateMotion(){
-  sensorActive=true; setBtn(true); enterMeasuring(null);
-  var lastMag=0, stepTimes=[];
-  motionHandler=function(e){
-    var a=e.accelerationIncludingGravity; if(!a)return;
-    var mag=Math.sqrt(a.x*a.x+a.y*a.y+a.z*a.z), now=Date.now();
-    if(mag>13&&lastMag<=13&&(now-lastStepTime)>220){
-      lastStepTime=now; stepTimes.push(now); stepCount++;
-      document.getElementById("stepsVal").textContent=stepCount;
-      if(stepTimes.length>8) stepTimes.shift();
-      if(stepTimes.length>=4){
-        var ivs=[],s=0;
-        for(var i=1;i<stepTimes.length;i++) ivs.push(stepTimes[i]-stepTimes[i-1]);
-        for(var j=0;j<ivs.length;j++) s+=ivs[j];
-        var bpm=Math.round(60000/(s/ivs.length));
-        if(bpm>100&&bpm<230) onNewBpm(bpm);
+  sensorActive = true; setBtn(true); enterMeasuring();
+  var lastMag = 0, stepTimes = [];
+  motionHandler = function(e){
+    var a = e.accelerationIncludingGravity; if(!a) return;
+    var mag = Math.sqrt(a.x*a.x + a.y*a.y + a.z*a.z), now = Date.now();
+    if(mag > 13 && lastMag <= 13 && (now - lastStepTime) > 220){
+      lastStepTime = now; stepTimes.push(now); stepCount++;
+      document.getElementById("stepsVal").textContent = stepCount;
+      if(stepTimes.length > 8) stepTimes.shift();
+      if(stepTimes.length >= 4){
+        var ivs = [], s = 0;
+        for(var i=1; i<stepTimes.length; i++) ivs.push(stepTimes[i]-stepTimes[i-1]);
+        for(var j=0; j<ivs.length; j++) s += ivs[j];
+        var bpm = Math.round(60000 / (s / ivs.length));
+        if(bpm > 100 && bpm < 230) onNewBpm(bpm);
       }
     }
-    lastMag=mag;
+    lastMag = mag;
   };
-  window.addEventListener("devicemotion",motionHandler);
+  window.addEventListener("devicemotion", motionHandler);
 }
 
 function startDemo(){
-  sensorActive=true; setBtn(true); enterMeasuring(null);
-  var d=162;
-  demoTimer=setInterval(function(){
-    d=Math.max(150,Math.min(180,d+(Math.random()>0.5?0.5:-0.5)));
-    stepCount++; document.getElementById("stepsVal").textContent=stepCount;
+  sensorActive = true; setBtn(true); enterMeasuring();
+  var d = 162;
+  demoTimer = setInterval(function(){
+    d = Math.max(150, Math.min(180, d + (Math.random() > 0.5 ? 0.5 : -0.5)));
+    stepCount++; document.getElementById("stepsVal").textContent = stepCount;
     onNewBpm(Math.round(d));
-  },500);
+  }, 500);
 }
 
 function stopSensor(){
-  sensorActive=false; mode="idle"; lockedBpm=0;
-  bpmSamples=[]; stableStartTime=0;
-  if(typeof motionHandler==="function") window.removeEventListener("devicemotion",motionHandler);
+  sensorActive = false; mode = "idle"; lockedBpm = 0;
+  measureSamples = []; changeBuffer = [];
+  if(typeof motionHandler === "function") window.removeEventListener("devicemotion", motionHandler);
   if(demoTimer) clearInterval(demoTimer);
-  if(currentAudio){currentAudio.pause();currentAudio=null;}
-  motionHandler=null; demoTimer=null;
+  if(currentAudio){ currentAudio.pause(); currentAudio = null; }
+  motionHandler = null; demoTimer = null;
   setBtn(false); setBpmDisplay("--");
-  document.getElementById("bpmNum").style.color="white";
+  document.getElementById("bpmNum").style.color = "white";
   setBar(0); setLabel(""); clearNp();
 }
 
 function setBtn(on){
-  var b=document.getElementById("startBtn");
-  b.textContent=on?"STOP":"GO";
-  b.style.color=on?"#ffaaaa":"white";
+  var b = document.getElementById("startBtn");
+  b.textContent = on ? "STOP" : "GO";
+  b.style.color = on ? "#ffaaaa" : "white";
 }
-
 </script>
 </body>
 </html>
