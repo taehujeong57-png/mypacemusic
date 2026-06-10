@@ -68,7 +68,7 @@ var SONGS = {
 
 // ── 설정 ──────────────────────────────────────────────────
 var BPM_LIST=[150,152,154,156,158,160,162,164,166,168,170,172,174,176,178,180];
-var STABLE_SECONDS=7, STABLE_TOLERANCE=4, CHANGE_THRESHOLD=8, AVG_WINDOW=12;
+var STABLE_SECONDS=7, STABLE_TOLERANCE=4, CHANGE_THRESHOLD=4, AVG_WINDOW=12;
 
 // ── 유틸 ──────────────────────────────────────────────────
 function getNearestBpm(b){return BPM_LIST.reduce(function(a,c){return Math.abs(c-b)<Math.abs(a-b)?c:a;});}
