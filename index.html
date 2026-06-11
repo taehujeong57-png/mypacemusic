@@ -145,6 +145,7 @@ var measureSamples = [];   // 발자국별 BPM 누적
 var changeBuffer = [];     // 연속 변화 감지 버퍼
 var lockGraceUntil = 0;    // 이 시각 전까지는 자동 재측정 금지
 var manualHoldUntil = 0;   // 수동 변경 보호 만료 시각
+var stepTimes = [];        // 걸음 시각 기록 (BPM 계산 창)
 
 // ── UI 헬퍼 ───────────────────────────────────────────────
 function setBpmDisplay(val, color){
@@ -157,10 +158,11 @@ function setBar(p){ document.getElementById("measureFill").style.width = p + "%"
 function clearNp(){ for(var i=0;i<5;i++) document.getElementById("np"+i).textContent=""; }
 
 // ── 모드 전환 ─────────────────────────────────────────────
-function enterMeasuring(seedSamples){
+function enterMeasuring(){
   mode = "measuring";
-  measureSamples = seedSamples ? seedSamples.slice() : [];
+  measureSamples = [];
   changeBuffer = [];
+  stepTimes = []; // 옛 박자의 걸음 간격을 버리고 깨끗한 창에서 다시 계산
   // 재측정 중 음악 정지 (옛 곡에 몸이 동조하는 것을 방지)
   if(currentAudio){ currentAudio.pause(); currentAudio = null; }
   clearNp();
@@ -196,8 +198,11 @@ function onNewBpm(bpm){
     measureSamples.push(bpm);
     updateMeasureUI();
     if(measureSamples.length >= STEPS_TO_LOCK){
-      var avg = Math.round(measureSamples.reduce(function(a,b){return a+b;},0) / measureSamples.length);
-      enterLocked(getNearestBpm(avg), false);
+      // 중앙값 사용: 걸음 누락으로 생기는 가짜 저값에 휘둘리지 않음
+      var sorted = measureSamples.slice().sort(function(a,b){return a-b;});
+      var mid = Math.floor(sorted.length / 2);
+      var med = (sorted.length % 2) ? sorted[mid] : Math.round((sorted[mid-1] + sorted[mid]) / 2);
+      enterLocked(getNearestBpm(med), false);
     }
     return;
   }
@@ -213,8 +218,8 @@ function onNewBpm(bpm){
     if(Math.abs(bpm - lockedBpm) > CHANGE_THRESHOLD){
       changeBuffer.push(bpm);
       if(changeBuffer.length >= CHANGE_COUNT){
-        // 연속 6발 감지 → 재측정 시작 (감지된 6발을 초기 샘플로 활용)
-        enterMeasuring(changeBuffer);
+        // 연속 6발 감지 → 재측정 시작 (전환기의 오염된 샘플은 버리고 0부터)
+        enterMeasuring();
       }
     } else {
       changeBuffer = []; // 일시적 흔들림 무시
@@ -296,7 +301,7 @@ function activateMotion(){
   sensorActive = true; manualMode = false; stepCount = 0;
   document.getElementById("stepsVal").textContent = "0";
   setBtn(true); enterMeasuring();
-  var lastMag = 0, stepTimes = [];
+  var lastMag = 0; stepTimes = [];
   motionHandler = function(e){
     var a = e.accelerationIncludingGravity; if(!a) return;
     var mag = Math.sqrt(a.x*a.x + a.y*a.y + a.z*a.z), now = Date.now();
@@ -305,10 +310,13 @@ function activateMotion(){
       document.getElementById("stepsVal").textContent = stepCount;
       if(stepTimes.length > 8) stepTimes.shift();
       if(stepTimes.length >= 4){
-        var ivs = [], s = 0;
+        var ivs = [];
         for(var i=1; i<stepTimes.length; i++) ivs.push(stepTimes[i]-stepTimes[i-1]);
-        for(var j=0; j<ivs.length; j++) s += ivs[j];
-        var bpm = Math.round(60000 / (s / ivs.length));
+        // 간격도 중앙값 사용: 놓친 걸음(두 배 간격)이 섞여도 BPM이 무너지지 않음
+        ivs.sort(function(a,b){return a-b;});
+        var m = Math.floor(ivs.length / 2);
+        var medIv = (ivs.length % 2) ? ivs[m] : (ivs[m-1] + ivs[m]) / 2;
+        var bpm = Math.round(60000 / medIv);
         if(bpm > 100 && bpm < 230) onNewBpm(bpm);
       }
     }
