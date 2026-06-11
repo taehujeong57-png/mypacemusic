@@ -103,6 +103,7 @@ var BPM_LIST = [150,152,154,156,158,160,162,164,166,168,170,172,174,176,178,180]
 var STEPS_TO_LOCK = 20;   // 20걸음 누적 평균으로 무조건 확정
 var CHANGE_THRESHOLD = 4; // 이 BPM 초과 차이나면 변화로 간주
 var CHANGE_COUNT = 6;     // 연속 6발 감지되면 재측정 시작
+var LOCK_GRACE_MS = 20000; // 확정 후 20초간 자동 재측정 무시 (보호 시간)
 
 // 색상
 var COLOR_IDLE   = "rgba(255,255,255,0.55)";
@@ -141,6 +142,7 @@ var lockedBpm = 0;
 
 var measureSamples = [];   // 발자국별 BPM 누적
 var changeBuffer = [];     // 연속 변화 감지 버퍼
+var lockGraceUntil = 0;    // 이 시각 전까지는 자동 재측정 금지
 
 // ── UI 헬퍼 ───────────────────────────────────────────────
 function setBpmDisplay(val, color){
@@ -174,6 +176,7 @@ function enterLocked(nearest, isManual){
   mode = "locked";
   lockedBpm = nearest;
   changeBuffer = [];
+  lockGraceUntil = Date.now() + LOCK_GRACE_MS; // 확정 직후 20초간 흔들림 무시
   showBar(false);
   setBar(0);
   setBpmDisplay(nearest, isManual ? COLOR_MANUAL : COLOR_AUTO);
@@ -200,6 +203,9 @@ function onNewBpm(bpm){
   if(mode === "locked"){
     // 수동 고정 중에는 자동 재측정 없음 (사용자 의지가 우선)
     if(manualMode) return;
+
+    // 확정 후 20초 보호 시간: 다른 케이던스가 잡혀도 무시
+    if(Date.now() < lockGraceUntil){ changeBuffer = []; return; }
 
     if(Math.abs(bpm - lockedBpm) > CHANGE_THRESHOLD){
       changeBuffer.push(bpm);
