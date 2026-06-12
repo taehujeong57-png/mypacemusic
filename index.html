@@ -140,6 +140,7 @@ var demoTimer = null;
 var currentTrackIdx = 0;
 var currentAudio = null;
 var lockedBpm = 0;
+var shuffleOrder = [];     // 셔플 재생 순서 (트랙 인덱스 배열)
 
 var measureSamples = [];   // 발자국별 BPM 누적
 var changeBuffer = [];     // 연속 변화 감지 버퍼
@@ -186,6 +187,7 @@ function enterLocked(nearest, isManual){
   setBar(0);
   setBpmDisplay(nearest, isManual ? COLOR_MANUAL : COLOR_AUTO);
   currentTrackIdx = 0;
+  startShuffle(nearest);
   renderNowPlaying(nearest);
   playTrack(nearest, 0);
 }
@@ -244,17 +246,48 @@ function enterLockedManual(bpm){
   changeBuffer = [];
   setBpmDisplay(bpm, COLOR_MANUAL);
   currentTrackIdx = 0;
+  startShuffle(bpm);
   renderNowPlaying(bpm);
   playTrack(bpm, 0);
 }
 
 // ── 재생 ──────────────────────────────────────────────────
+// Fisher-Yates 셔플. avoid가 주어지면 첫 곡이 그 곡이 되지 않게 함(연속 반복 방지)
+function makeShuffle(len, avoid){
+  var arr = [];
+  for(var i=0;i<len;i++) arr.push(i);
+  for(var k=len-1;k>0;k--){
+    var j = Math.floor(Math.random()*(k+1));
+    var t = arr[k]; arr[k]=arr[j]; arr[j]=t;
+  }
+  if(len > 1 && avoid !== undefined && arr[0] === avoid){
+    var s = 1 + Math.floor(Math.random()*(len-1));
+    var t2 = arr[0]; arr[0]=arr[s]; arr[s]=t2;
+  }
+  return arr;
+}
+function startShuffle(nearest){
+  var tracks = SONGS[nearest] || [];
+  shuffleOrder = makeShuffle(tracks.length);
+}
+// currentTrackIdx(논리 순번) → 실제 트랙 인덱스. 한 바퀴 다 돌면 자동 재셔플로 이어붙임
+function orderIdx(nearest, idx){
+  var tracks = SONGS[nearest] || [];
+  var len = tracks.length;
+  if(!len) return 0;
+  while(idx >= shuffleOrder.length){
+    var last = shuffleOrder.length ? shuffleOrder[shuffleOrder.length-1] : undefined;
+    shuffleOrder = shuffleOrder.concat(makeShuffle(len, last));
+  }
+  return shuffleOrder[idx];
+}
+
 function renderNowPlaying(nearest){
   var tracks = SONGS[nearest] || [];
   var len = tracks.length;
   if(!len) return;
   for(var i=0;i<5;i++){
-    var idx = (currentTrackIdx + i) % len;
+    var idx = orderIdx(nearest, currentTrackIdx + i);
     document.getElementById("np"+i).textContent = getDisplayTitle(tracks[idx]);
   }
 }
@@ -263,7 +296,7 @@ function playTrack(nearest, idx){
   if(currentAudio){ currentAudio.pause(); currentAudio = null; }
   var tracks = SONGS[nearest] || [];
   if(!tracks.length) return;
-  var file = tracks[idx % tracks.length];
+  var file = tracks[orderIdx(nearest, idx)];
   currentAudio = new Audio(getR2Url(nearest, file));
   currentAudio.play().catch(function(e){ console.log("Play error:", e); });
   currentAudio.onended = function(){
