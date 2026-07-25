@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>MyPaceMusic</title>
+<link rel="manifest" href="/app.webmanifest">
+<link rel="apple-touch-icon" href="/apple-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#E8EAEE">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -58,6 +63,29 @@ button:active{box-shadow:inset -3px -3px 7px #FFFFFF,inset 3px 3px 7px #D0D4DC;}
 .meta{display:flex;justify-content:space-between;align-items:center;margin-top:20px;padding:0 4px;}
 .meta .k{font-size:13px;color:#8A8F9C;}
 .meta .v{font-size:16px;font-weight:600;color:#3E4759;}
+
+/* ── 홈 화면 설치 안내 ── */
+.install-bar{display:none;align-items:center;gap:10px;margin-top:14px;
+  padding:12px 14px;border-radius:16px;}
+.install-bar.on{display:flex;}
+.install-bar .ib-txt{flex:1;font-size:12px;color:#6B7285;line-height:1.45;}
+.install-bar .ib-btn{padding:9px 16px;border-radius:12px;font-size:12.5px;font-weight:600;
+  color:#6E87E6;white-space:nowrap;}
+.install-bar .ib-x{background:none;border:none;font-size:15px;color:#B7BCC8;padding:2px 4px;box-shadow:none;}
+.install-bar .ib-x:active{box-shadow:none;}
+.ios-sheet{display:none;position:fixed;inset:0;background:rgba(62,71,89,.38);
+  align-items:center;justify-content:center;padding:24px;z-index:50;}
+.ios-sheet.on{display:flex;}
+.ios-card{width:100%;max-width:340px;background:#EDEFF3;border-radius:22px;padding:24px 22px;
+  box-shadow:-8px -8px 20px #FFFFFF,8px 8px 20px #B9BEC9;}
+.ios-card h3{font-size:15px;color:#3E4759;font-weight:600;margin-bottom:16px;text-align:center;}
+.ios-card .st{display:flex;gap:11px;align-items:flex-start;margin-bottom:13px;}
+.ios-card .n{width:21px;height:21px;flex:none;border-radius:50%;background:#6E87E6;color:#fff;
+  font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;}
+.ios-card .d{font-size:12.5px;color:#6B7285;line-height:1.5;padding-top:2px;}
+.ios-card .d b{color:#3E4759;font-weight:600;}
+.ios-card .ok{width:100%;margin-top:8px;padding:13px;border-radius:14px;
+  font-size:13px;font-weight:600;}
 </style>
 </head>
 <body>
@@ -97,6 +125,11 @@ button:active{box-shadow:inset -3px -3px 7px #FFFFFF,inset 3px 3px 7px #D0D4DC;}
     <span class="steps" id="stepsVal1">0 걸음</span>
   </div>
   <button class="main-btn raised" id="startBtn" onclick="toggleSensor()">START</button>
+  <div class="install-bar raised" id="installBar">
+    <span class="ib-txt">홈 화면에 받아두면 주소 없이 바로 열립니다</span>
+    <button class="ib-btn raised" id="installBtn">받기</button>
+    <button class="ib-x" id="installX">&#10005;</button>
+  </div>
 </div>
 
 <!-- ═══ 2페이지 · 상세 ═══ -->
@@ -129,14 +162,23 @@ button:active{box-shadow:inset -3px -3px 7px #FFFFFF,inset 3px 3px 7px #D0D4DC;}
   <div class="meta"><span class="k">걸음 수</span><span class="v" id="stepsVal2">0</span></div>
 </div>
 
+<!-- ═══ 아이폰 설치 안내창 ═══ -->
+<div class="ios-sheet" id="iosSheet">
+  <div class="ios-card">
+    <h3>홈 화면에 아이콘 만들기</h3>
+    <div class="st"><span class="n">1</span><span class="d">화면 <b>아래 가운데</b>의 공유 버튼을 누르세요. 네모에서 화살표가 위로 나온 모양입니다.</span></div>
+    <div class="st"><span class="n">2</span><span class="d">메뉴를 아래로 넘겨 <b>홈 화면에 추가</b>를 누르세요.</span></div>
+    <div class="st"><span class="n">3</span><span class="d">오른쪽 위 <b>추가</b>를 누르면 끝입니다.</span></div>
+    <button class="ok raised" onclick="document.getElementById('iosSheet').classList.remove('on')">알겠습니다</button>
+  </div>
+</div>
+
 <script>
 // ══════════════════════════════════════════════════════════
 // 로직
 // ══════════════════════════════════════════════════════════
 var R2_BASE = "https://pub-c839bc8e4f8944b7bc78feb44003d00b.r2.dev";
 
-// 곡 목록은 더 이상 코드에 손으로 적지 않는다.
-// 자비스가 R2에 올린 manifest.json을 앱이 직접 읽는다.
 var SONGS = {};
 var BPM_LIST = [];
 
@@ -146,11 +188,9 @@ var CHANGE_COUNT = 15;
 var OUTLIER_BAND = 12;
 var LOCK_GRACE_MS = 20000;
 var MANUAL_HOLD_MS = 60000;
-var MATCH_TOLERANCE = 3;   // 측정값과 폴더가 이 이상 벌어지면 재생하지 않는다
-var STEP_MAG = 11.5;       // 걸음 감지 가속도 임계값 (느린 걸음은 충격이 약하다)
+var MATCH_TOLERANCE = 3;
+var STEP_MAG = 11.5;
 
-// 100~200 구간으로 접는다. 걸음을 놓쳐 두 배로 벌어진 값(67)도,
-// 중복 감지로 절반이 된 값(268)도 모두 134로 복원된다.
 function foldBpm(b){
   while(b >= 200) b /= 2;
   while(b < 100)  b *= 2;
@@ -165,7 +205,6 @@ function loadManifest(){
       Object.keys(m).forEach(function(k){ SONGS[parseInt(k,10)] = m[k]; });
       BPM_LIST = Object.keys(SONGS).map(Number).sort(function(a,b){return a-b;});
       console.log("매니페스트 로드 완료: 폴더 " + BPM_LIST.length + "개", BPM_LIST);
-      // 매니페스트가 늦게 도착했는데 이미 확정 상태라면, 지금이라도 곡을 붙인다
       if(mode === "locked" && !playBpm){
         playBpm = pickFolder(lockedBpm);
         if(playBpm){
@@ -193,7 +232,6 @@ function robustBpm(samples){
 function getNearestBpm(b){
   return BPM_LIST.reduce(function(a,c){return Math.abs(c-b)<Math.abs(a-b)?c:a;});
 }
-// 측정값에 맞는 폴더를 고른다. 너무 멀면 0을 돌려주고 재생하지 않는다.
 function pickFolder(bpm){
   if(!BPM_LIST.length) return 0;
   var n = getNearestBpm(bpm);
@@ -215,8 +253,8 @@ function getR2Url(bpm,fn){return R2_BASE+"/"+bpm+"/"+encodeURIComponent(fn);}
 var mode="idle", sensorActive=false, manualMode=false;
 var stepCount=0, lastStepTime=0, motionHandler=null, demoTimer=null;
 var currentTrackIdx=0, currentAudio=null;
-var lockedBpm=0;   // 실제 측정된 케이던스 (화면에 뜨는 숫자)
-var playBpm=0;     // 실제로 재생 중인 폴더 (0이면 재생 안 함)
+var lockedBpm=0;
+var playBpm=0;
 var measureSamples=[], changeBuffer=[], lockGraceUntil=0, manualHoldUntil=0, stepTimes=[];
 
 function enterMeasuring(){
@@ -333,7 +371,6 @@ function activateMotion(){
         var ivs=[];
         for(var i=1;i<stepTimes.length;i++) ivs.push(stepTimes[i]-stepTimes[i-1]);
         var bpm=Math.round(60000/median(ivs));
-        // 버리지 않고 접는다 — 놓친 걸음도 정답으로 되살아난다
         if(bpm>50 && bpm<272) feedBpm(foldBpm(bpm));
       }
     }
@@ -362,7 +399,7 @@ function stopSensor(){
 }
 
 // ══════════════════════════════════════════════════════════
-// UI 레이어 (뉴모피즘 계기판)
+// UI 레이어
 // ══════════════════════════════════════════════════════════
 function goPage(n){
   document.getElementById("page1").classList.toggle("on",n===1);
@@ -488,6 +525,50 @@ var ui=(function(){
   };
 })();
 ui.idle();
+
+// ══════════════════════════════════════════════════════════
+// 홈 화면 설치 안내
+// ══════════════════════════════════════════════════════════
+(function(){
+  var bar = document.getElementById("installBar");
+  var deferred = null;
+
+  var standalone = window.matchMedia("(display-mode: standalone)").matches
+                || window.navigator.standalone === true;
+  var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  var dismissed = false;
+  try { dismissed = localStorage.getItem("mpm_install_hide") === "1"; } catch(e){}
+
+  if(standalone || dismissed) return;
+
+  function show(){ bar.classList.add("on"); }
+
+  window.addEventListener("beforeinstallprompt", function(e){
+    e.preventDefault();
+    deferred = e;
+    show();
+  });
+
+  if(isIOS) show();
+
+  document.getElementById("installBtn").onclick = function(){
+    if(deferred){
+      deferred.prompt();
+      deferred.userChoice.then(function(){
+        bar.classList.remove("on");
+        deferred = null;
+      });
+    } else if(isIOS){
+      document.getElementById("iosSheet").classList.add("on");
+    }
+  };
+
+  document.getElementById("installX").onclick = function(){
+    bar.classList.remove("on");
+    try { localStorage.setItem("mpm_install_hide","1"); } catch(e){}
+  };
+})();
+
 loadManifest();
 </script>
 </body>
