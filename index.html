@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" href="/apple-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#E8EAEE">
+<meta name="theme-color" content="#E9EAEE">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -162,15 +162,9 @@ button:active{box-shadow:inset -3px -3px 7px #FFFFFF,inset 3px 3px 7px #D0D4DC;}
   <div class="meta"><span class="k">걸음 수</span><span class="v" id="stepsVal2">0</span></div>
 </div>
 
-<!-- ═══ 아이폰 설치 안내창 ═══ -->
+<!-- ═══ 안내창 (내용은 상황에 따라 채워짐) ═══ -->
 <div class="ios-sheet" id="iosSheet">
-  <div class="ios-card">
-    <h3>홈 화면에 아이콘 만들기</h3>
-    <div class="st"><span class="n">1</span><span class="d">화면 <b>아래 가운데</b>의 공유 버튼을 누르세요. 네모에서 화살표가 위로 나온 모양입니다.</span></div>
-    <div class="st"><span class="n">2</span><span class="d">메뉴를 아래로 넘겨 <b>홈 화면에 추가</b>를 누르세요.</span></div>
-    <div class="st"><span class="n">3</span><span class="d">오른쪽 위 <b>추가</b>를 누르면 끝입니다.</span></div>
-    <button class="ok raised" onclick="document.getElementById('iosSheet').classList.remove('on')">알겠습니다</button>
-  </div>
+  <div class="ios-card"></div>
 </div>
 
 <script>
@@ -530,36 +524,66 @@ ui.idle();
 // 홈 화면 설치 안내
 // ══════════════════════════════════════════════════════════
 (function(){
-  var bar = document.getElementById("installBar");
+  var bar   = document.getElementById("installBar");
+  var sheet = document.getElementById("iosSheet");
+  var card  = sheet.querySelector(".ios-card");
+  var txt   = bar.querySelector(".ib-txt");
+  var btn   = document.getElementById("installBtn");
   var deferred = null;
 
+  var ua = navigator.userAgent;
   var standalone = window.matchMedia("(display-mode: standalone)").matches
                 || window.navigator.standalone === true;
-  var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  var isIOS = /iphone|ipad|ipod/i.test(ua);
+  // 카카오톡·유튜브·인스타 등 앱 안에서 열린 브라우저 판별
+  var inApp = /KAKAOTALK|NAVER\(inapp|Instagram|FBAN|FBAV|Line\/|DaumApps|; wv\)/i.test(ua);
+
   var dismissed = false;
   try { dismissed = localStorage.getItem("mpm_install_hide") === "1"; } catch(e){}
-
   if(standalone || dismissed) return;
+
+  function openSheet(title, list){
+    var h = '<h3>' + title + '</h3>';
+    for(var i=0;i<list.length;i++){
+      h += '<div class="st"><span class="n">'+(i+1)+'</span><span class="d">'+list[i]+'</span></div>';
+    }
+    h += '<button class="ok raised" id="sheetOk">알겠습니다</button>';
+    card.innerHTML = h;
+    document.getElementById("sheetOk").onclick = function(){ sheet.classList.remove("on"); };
+    sheet.classList.add("on");
+  }
 
   function show(){ bar.classList.add("on"); }
 
   window.addEventListener("beforeinstallprompt", function(e){
-    e.preventDefault();
-    deferred = e;
-    show();
+    e.preventDefault(); deferred = e; show();
   });
 
-  if(isIOS) show();
+  if(inApp){
+    txt.textContent = "브라우저로 열면 홈 화면에 받아둘 수 있습니다";
+    btn.textContent = "방법";
+    show();
+  } else if(isIOS){
+    show();
+  }
 
-  document.getElementById("installBtn").onclick = function(){
+  btn.onclick = function(){
     if(deferred){
       deferred.prompt();
-      deferred.userChoice.then(function(){
-        bar.classList.remove("on");
-        deferred = null;
-      });
+      deferred.userChoice.then(function(){ bar.classList.remove("on"); deferred = null; });
+    } else if(inApp){
+      openSheet("먼저 브라우저로 열어주세요", [
+        isIOS
+          ? "화면 <b>오른쪽 아래</b> 버튼을 눌러 <b>Safari로 열기</b>를 선택하세요."
+          : "화면 <b>오른쪽 아래</b>의 점 세 개를 눌러 <b>다른 브라우저로 열기</b>를 선택하세요.",
+        "열린 브라우저에서 이 화면 아래의 <b>받기</b> 버튼을 누르면 됩니다."
+      ]);
     } else if(isIOS){
-      document.getElementById("iosSheet").classList.add("on");
+      openSheet("홈 화면에 아이콘 만들기", [
+        "화면 <b>아래 가운데</b>의 공유 버튼을 누르세요. 네모에서 화살표가 위로 나온 모양입니다.",
+        "메뉴를 아래로 넘겨 <b>홈 화면에 추가</b>를 누르세요.",
+        "오른쪽 위 <b>추가</b>를 누르면 끝입니다."
+      ]);
     }
   };
 
